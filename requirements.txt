@@ -1,0 +1,22 @@
+# Minimal requirements - only packages actually used in code
+
+# UI Framework
+streamlit>=1.45.0
+
+# Environment variables
+python-dotenv>=1.1.0
+
+# Token counting
+tiktoken>=0.9.0
+
+# LangChain OpenAI integration
+langchain-openai>=1.0.0
+
+# LangChain core components
+langchain-core>=1.0.0
+
+# OpenAI API
+openai>=2.0.0
+
+# Optional: Logging formatter
+coloredlogs>=15.0.1
