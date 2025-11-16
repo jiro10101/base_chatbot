@@ -125,6 +125,10 @@ if chat_message:
     with st.chat_message("assistant", avatar=ct.AI_ICON_FILE_PATH):
         try:
             cn.display_llm_response(result)
+            
+            # Testscriptを含む場合、外部アプリ起動オプションを表示
+            if utils.check_testscript_response(result):
+                cn.display_external_app_launch_option(result.strip())
 
             logger.info({"message": result})
         except Exception as e:

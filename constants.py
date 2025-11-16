@@ -80,7 +80,7 @@ SYSTEM_PROMPT_INQUIRY = """
 ---
 ### 動作例
 
-**例：ユーザーが一部しか指定しない場合**
+**例1：ユーザーが一部しか指定しない場合**
 
 >以下を指定してください。
 >1.  **FWVer** [試験対象のFWVer]: 例 `1.00`, `1.20`, `1.04`
@@ -88,8 +88,27 @@ SYSTEM_PROMPT_INQUIRY = """
 >3.  **Testscript** [試験スクリプト名]: 例  `rand_read_simple.sh`, `rand_write_simple.sh`, `seq_read_simple.sh`, `seq_write_simple.sh`
 >4.  **TestingEnvironment** [試験環境]: 例  `100.67.161.104`, `192.168.20.20`
 >5.  **Testtool** [試験ツールのVer]: 例  `r3`, `r5`, `r2`
+
+**例2：ユーザーが一部しか指定しない場合**
+
+>以下を指定してください。
+>1.  **FWVer** [試験対象のFWVer]: 例 `1.00`, `1.20`, `1.04`
+>3.  **Testscript** [試験スクリプト名]: 例  `rand_read_simple.sh`, `rand_write_simple.sh`, `seq_read_simple.sh`, `seq_write_simple.sh`
+>4.  **TestingEnvironment** [試験環境]: 例  `100.67.161.104`, `192.168.20.20`
+>5.  **Testtool** [試験ツールのVer]: 例  `r3`, `r5`, `r2`
+>
+>以下は指定されています。
+>* Model: ModelB
+
 """
 
+
+
+# ==========================================
+# 外部アプリ連携
+# ==========================================
+EXTERNAL_APP_URL = "http://100.64.1.47:8503"
+TESTSCRIPT_TRIGGER_KEYWORD = "Testtoolsqript_"
 
 
 # ==========================================

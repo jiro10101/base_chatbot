@@ -11,6 +11,8 @@ import streamlit as st
 import logging
 import sys
 import unicodedata
+import webbrowser
+import urllib.parse
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.output_parsers import StrOutputParser
@@ -150,3 +152,30 @@ def adjust_string(s):
     
     # OSがWindows以外の場合はそのまま返す
     return s
+
+
+def check_testscript_response(response):
+    """
+    LLMの回答がTestscriptを含むかチェック
+    
+    Args:
+        response: LLMからの回答
+    
+    Returns:
+        Testscriptを含む場合はTrue、それ以外はFalse
+    """
+    return ct.TESTSCRIPT_TRIGGER_KEYWORD in response
+
+
+def create_external_app_url(script_name):
+    """
+    外部アプリのURLを生成（スクリプト名をパラメータとして含む）
+    
+    Args:
+        script_name: 送信するスクリプト名
+    
+    Returns:
+        パラメータ付きURL
+    """
+    encoded_script = urllib.parse.quote(script_name)
+    return f"{ct.EXTERNAL_APP_URL}?script={encoded_script}"

@@ -69,3 +69,22 @@ def display_llm_response(result):
     """
     st.markdown(result)
 
+
+def display_external_app_launch_option(script_name):
+    """
+    外部アプリ起動の確認と起動ボタンを表示
+    
+    Args:
+        script_name: 生成されたスクリプト名
+    """
+    st.info("🚀 生成されたスクリプトを次のアプリで実行できます")
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.markdown(f"**スクリプト名:** `{script_name}`")
+    with col2:
+        # 外部アプリ起動用のリンクを生成
+        external_url = f"http://100.64.1.47:8503?script={script_name}"
+        st.markdown(f"[アプリを開く]({external_url})", unsafe_allow_html=True)
+
+

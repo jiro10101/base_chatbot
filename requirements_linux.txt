@@ -1,5 +1,6 @@
 # Core Python packages for Linux - minimal requirements
 # Only packages actually used in the code
+# Last updated: 2025-11-16
 
 # UI Framework
 streamlit>=1.45.0
