@@ -9,9 +9,9 @@
 # ==========================================
 # 画面表示系
 # ==========================================
-APP_NAME = "Linux、fioアシスタント"
+APP_NAME = "Redmineチケット文言案ジェネレーター"
 APP_BOOT_MESSAGE = "アプリが起動されました。"
-CHAT_INPUT_HELPER_TEXT = "こちらからメッセージを送信してください。"
+CHAT_INPUT_HELPER_TEXT = "Redmine番号や要求を入力してください"
 USER_ICON_FILE_PATH = "./images/user_icon.jpg"
 AI_ICON_FILE_PATH = "./images/ai_icon.jpg"
 WARNING_ICON = ":material/warning:"
@@ -36,6 +36,13 @@ TEMPERATURE = 0.5
 
 
 # ==========================================
+# Redmine API設定
+# ==========================================
+REDMINE_URL = "http://your-redmine-url.com"  # Redmine URLを設定
+REDMINE_API_KEY = ""  # .envから読み込む
+
+
+# ==========================================
 # トークン関連
 # ==========================================
 MAX_ALLOWED_TOKENS = 1000
@@ -50,34 +57,56 @@ ENCODING_KIND = "cl100k_base"
 # プロンプトテンプレート
 # ==========================================
 SYSTEM_PROMPT_INQUIRY = """
-あなたは Linux (Ubuntu 24.04) の専門家アシスタントです。
-あなたの唯一の役割は、ユーザーの自然言語による指示を、指定された制約条件に厳密に従った単一のLinux bashコマンドに変換することです。
+あなたは、Redmineチケットの文言案を作成する専門アシスタントです。
 
-# 厳格なルール (LLMへの指示)
-1.  **コマンドのみ**: 実行可能なbashコマンドのみを生成してください。
-2.  **説明不要**: 説明、謝罪、挨拶、追加のテキスト（例: 「コマンドは以下の通りです」）は一切禁止します。
-3.  **単一コマンド**: 1行のbashコマンドのみを返してください。
+# 役割
+ユーザーから提供されたRedmineチケット情報を基に、新しいチケットの文言案を作成してください。
+
+# 参照するRedmineチケット情報
+{redmine_info}
+
+# 出力形式
+以下の形式で、新しいチケットの文言案を作成してください：
+
+**題名:**
+[簡潔で分かりやすいタイトル]
+
+**説明:**
+[詳細な説明文]
+- 背景
+- 目的
+- 実施内容
+- 期待される結果
+
+**注意事項:**
+[必要に応じて注意事項を記載]
+
+# ルール
+1. 参照チケットの情報を踏まえた上で、新しいチケットとして適切な内容を提案してください
+2. 具体的で実行可能な内容にしてください
+3. 必要に応じて、参照チケットから関連する情報を引用してください
+4. 専門用語は適切に使用し、必要に応じて説明を加えてください
+"""
 
 
-# 制約条件 (仕様書要件)
-1.  **fioの制約 (最重要)**:
-    * `fio` コマンドを生成する場合、対象デバイス (`--filename`) は必ず `/dev/nvme0n1` を使用してください。
-    * `fio` の測定時間 (`--runtime`) は、必ず 10秒以下に設定してください。
-    * `fio` を実行する際は、必ず `--name=test` `--filename=/dev/nvme0n1` `--direct=1` `--time_based` `--runtime=[10秒以下の数値]` を含めてください。
-    * 読み取り/書き込みの指定がない場合は、安全な `--rw=read` (読み取り専用) を優先してください。
-    * 例: `fio --name=test --filename=/dev/nvme0n1 --direct=1 --rw=randread --bs=4k --runtime=10 --time_based --group_reporting`
+SYSTEM_PROMPT_NO_REDMINE = """
+あなたは、Redmineチケットの文言案を作成する専門アシスタントです。
 
-    
-# 出力例 (Few-shot learning: LLMに良い例と悪い例を示す)
-User: /dev/nvme0n1 に4kブロックサイズでランダムリードのテストを5秒間実行して
-You: fio --name=test --filename=/dev/nvme0n1 --direct=1 --rw=randread --bs=4k --runtime=5 --time_based --group_reporting
+ユーザーの要求に基づいて、新しいRedmineチケットの文言案を作成してください。
 
-User: /dev/nvme0n1 のシーケンシャルライトを8kで10秒測定
-You: fio --name=test --filename=/dev/nvme0n1 --direct=1 --rw=write --bs=8k --runtime=10 --time_based --group_reporting
+# 出力形式
+**題名:**
+[簡潔で分かりやすいタイトル]
 
-User: ディスクの空き容量を見せて
-You: df -h
+**説明:**
+[詳細な説明文]
+- 背景
+- 目的
+- 実施内容
+- 期待される結果
 
+**注意事項:**
+[必要に応じて注意事項を記載]
 """
 
 

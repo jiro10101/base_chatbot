@@ -27,22 +27,23 @@ def display_initial_ai_message():
     AIメッセージの初期表示
     """
     with st.chat_message("assistant", avatar=ct.AI_ICON_FILE_PATH):
-        st.success("こちらはfioをコマンド、Linuxコマンドを生成するAIチャットボットです。画面下部のチャット欄から質問してください。")
+        st.success("こちらはRedmineチケット文言案を生成するAIチャットボットです。画面下部のチャット欄からRedmine番号や要求を入力してください。")
     # 使用例の表示
     with st.expander("💡 使用例", expanded=False):
         st.markdown("""
-        **fio コマンド例:**
-        - SeqWriteを測定するコマンドを教えて
-        - RandReadを測定するコマンドを教えて
+        **Redmine番号を指定する場合:**
+        - Redmine #12345 を参考に新しいチケットを作成して
+        - #12345
+        - チケット 12345 の内容で文言案を作成
         
-        **システム情報例:**
-        - ディスク容量を知りたいコマンドを教えて
-        - CPU情報を確認するコマンドは？
+        **直接依頼する場合:**
+        - データベースのバックアップ手順のチケットを作成したい
+        - 新機能のテストチケットの文言案を作って
         
-        **一般的な質問例:**
-        - Ubuntuでファイルを検索する方法は？
-        - プロセス一覧を確認したい
+        **注意:**
+        Redmine番号を指定した場合、そのチケットの情報を取得して参考にします。
         """)
+
 
 def display_conversation_log(chat_message):
     """

@@ -11,10 +11,12 @@ import streamlit as st
 import logging
 import sys
 import unicodedata
+import requests
+import json
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.output_parsers import StrOutputParser
-from typing import List
+from typing import List, Optional, Dict
 import constants as ct
 
 
@@ -41,17 +43,24 @@ def build_error_message(message):
     return "\n".join([message, ct.COMMON_ERROR_MESSAGE])
 
 
-def create_simple_chain():
+def create_simple_chain(redmine_info: Optional[str] = None):
     """
     RAGを使用しない、シンプルな会話Chainを作成
+
+    Args:
+        redmine_info: Redmineチケット情報（オプション）
 
     Returns:
         会話Chain
     """
     logger = logging.getLogger(ct.LOGGER_NAME)
 
-    # RAGなしのシンプルなプロンプトテンプレート
-    question_answer_template = ct.SYSTEM_PROMPT_INQUIRY
+    # Redmine情報がある場合はそれを含むプロンプトを使用
+    if redmine_info:
+        question_answer_template = ct.SYSTEM_PROMPT_INQUIRY.format(redmine_info=redmine_info)
+    else:
+        question_answer_template = ct.SYSTEM_PROMPT_NO_REDMINE
+    
     question_answer_prompt = ChatPromptTemplate.from_messages(
         [
             ("system", question_answer_template),
@@ -150,3 +159,120 @@ def adjust_string(s):
     
     # OSがWindows以外の場合はそのまま返す
     return s
+
+
+def get_redmine_issue(issue_id: str) -> Optional[Dict]:
+    """
+    RedmineのチケットIDから情報を取得
+    
+    Args:
+        issue_id: RedmineのチケットID
+    
+    Returns:
+        チケット情報の辞書、エラー時はNone
+    """
+    logger = logging.getLogger(ct.LOGGER_NAME)
+    
+    # 環境変数からRedmine設定を取得
+    redmine_url = os.getenv("REDMINE_URL", ct.REDMINE_URL)
+    redmine_api_key = os.getenv("REDMINE_API_KEY", ct.REDMINE_API_KEY)
+    
+    if not redmine_url or not redmine_api_key:
+        logger.error("Redmine URLまたはAPIキーが設定されていません")
+        return None
+    
+    try:
+        # Redmine API呼び出し
+        url = f"{redmine_url}/issues/{issue_id}.json"
+        headers = {
+            "X-Redmine-API-Key": redmine_api_key,
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        issue_data = response.json()
+        
+        # 必要な情報を抽出
+        issue = issue_data.get("issue", {})
+        
+        formatted_info = {
+            "id": issue.get("id"),
+            "subject": issue.get("subject"),
+            "description": issue.get("description", ""),
+            "status": issue.get("status", {}).get("name", ""),
+            "priority": issue.get("priority", {}).get("name", ""),
+            "assigned_to": issue.get("assigned_to", {}).get("name", "未割り当て"),
+            "created_on": issue.get("created_on", ""),
+            "updated_on": issue.get("updated_on", "")
+        }
+        
+        logger.info(f"Redmineチケット #{issue_id} の情報を取得しました")
+        return formatted_info
+        
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Redmine API呼び出しエラー: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"予期しないエラー: {e}")
+        return None
+
+
+def format_redmine_info_for_prompt(issue_info: Dict) -> str:
+    """
+    Redmineチケット情報をプロンプト用にフォーマット
+    
+    Args:
+        issue_info: チケット情報の辞書
+    
+    Returns:
+        フォーマットされた文字列
+    """
+    if not issue_info:
+        return "参照するRedmineチケット情報はありません。"
+    
+    formatted = f"""
+## 参照チケット情報 (#{issue_info['id']})
+
+**題名:** {issue_info['subject']}
+
+**ステータス:** {issue_info['status']}
+**優先度:** {issue_info['priority']}
+**担当者:** {issue_info['assigned_to']}
+
+**説明:**
+{issue_info['description']}
+
+**作成日:** {issue_info['created_on']}
+**更新日:** {issue_info['updated_on']}
+"""
+    return formatted
+
+
+def extract_redmine_issue_id(message: str) -> Optional[str]:
+    """
+    ユーザーメッセージからRedmineチケットIDを抽出
+    
+    Args:
+        message: ユーザーメッセージ
+    
+    Returns:
+        チケットID（見つからない場合はNone）
+    """
+    import re
+    
+    # Redmine番号のパターン（#12345 または 12345）
+    patterns = [
+        r'#(\d+)',  # #12345
+        r'[Rr]edmine\s*[:#]?\s*(\d+)',  # Redmine: 12345
+        r'チケット\s*[:#]?\s*(\d+)',  # チケット: 12345
+        r'^\s*(\d+)\s*$'  # 12345 (数字のみ)
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, message)
+        if match:
+            return match.group(1)
+    
+    return None

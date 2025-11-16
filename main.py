@@ -103,6 +103,21 @@ if chat_message:
         st.markdown(chat_message)
     
     # ==========================================
+    # 1.5. Redmine番号の検出と情報取得
+    # ==========================================
+    redmine_issue_id = utils.extract_redmine_issue_id(chat_message)
+    if redmine_issue_id:
+        with st.spinner(f"Redmineチケット #{redmine_issue_id} の情報を取得中..."):
+            redmine_info_dict = utils.get_redmine_issue(redmine_issue_id)
+            if redmine_info_dict:
+                redmine_info = utils.format_redmine_info_for_prompt(redmine_info_dict)
+                # Redmine情報を含めてChainを再作成
+                st.session_state.simple_chain = utils.create_simple_chain(redmine_info)
+                st.info(f"✅ Redmineチケット #{redmine_issue_id} の情報を取得しました")
+            else:
+                st.warning(f"⚠️ Redmineチケット #{redmine_issue_id} の情報を取得できませんでした")
+    
+    # ==========================================
     # 2. LLMからの回答取得 or 問い合わせ処理
     # ==========================================
     res_box = st.empty()

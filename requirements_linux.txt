@@ -19,5 +19,8 @@ langchain-core>=1.0.0
 # OpenAI API
 openai>=2.0.0
 
+# HTTP requests for Redmine API
+requests>=2.31.0
+
 # Optional: Logging formatter
 coloredlogs>=15.0.1
