@@ -1,10 +1,10 @@
 # Minimal requirements - only packages actually used in code
 
 # UI Framework
-streamlit>=1.45.0
+taipy>=3.0.0
 
 # Environment variables
-python-dotenv>=1.1.0
+python-dotenv>=1.0.0
 
 # Token counting
 tiktoken>=0.9.0

@@ -7,9 +7,9 @@
 ############################################################
 from dotenv import load_dotenv
 import logging
-import streamlit as st
+from taipy.gui import Gui, State, invoke_callback, get_state_id
 import utils
-from initialize import initialize
+from initialize import initialize_app_data
 import components as cn
 import constants as ct
 
@@ -17,125 +17,168 @@ import constants as ct
 ############################################################
 # 設定関連
 ############################################################
-st.set_page_config(
-    page_title=ct.APP_NAME
-)
-
 load_dotenv()
 
 logger = logging.getLogger(ct.LOGGER_NAME)
 
 
 ############################################################
-# 初期化処理
+# グローバルデータの初期化
 ############################################################
-try:
-    initialize()
-except Exception as e:
-    logger.error(f"{ct.INITIALIZE_ERROR_MESSAGE}\n{e}")
-    st.error(utils.build_error_message(ct.INITIALIZE_ERROR_MESSAGE), icon=ct.ERROR_ICON)
-    st.stop()
-
-# アプリ起動時のログ出力
-if not "initialized" in st.session_state:
-    st.session_state.initialized = True
-    logger.info(ct.APP_BOOT_MESSAGE)
+# アプリ全体のデータを初期化
+app_data = initialize_app_data()
 
 
 ############################################################
-# 初期表示
+# ページマークダウン定義
 ############################################################
-# タイトル表示
-cn.display_app_title()
+page = f"""
+# {ct.APP_NAME}
 
-# AIメッセージの初期表示
-cn.display_initial_ai_message()
+<|part|class_name=chat-container|
+{cn.get_initial_message()}
+
+<|{{conversation}}|>
+
+<|layout|columns=1 1|
+<|{{user_message}}|input|label=メッセージを入力|on_change=send_message|class_name=chat-input|>
+<|送信|button|on_action=send_message|class_name=send-button|>
+|>
+|>
+
+<style>
+.chat-container {{
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}}
+.chat-input {{
+    width: 100%;
+}}
+.send-button {{
+    margin-left: 10px;
+}}
+.user-message {{
+    background-color: #e3f2fd;
+    padding: 10px;
+    border-radius: 10px;
+    margin: 10px 0;
+    text-align: right;
+}}
+.assistant-message {{
+    background-color: #f5f5f5;
+    padding: 10px;
+    border-radius: 10px;
+    margin: 10px 0;
+}}
+.spinner {{
+    text-align: center;
+    padding: 10px;
+    color: #666;
+}}
+</style>
+"""
 
 
 ############################################################
-# スタイリング処理
+# 状態変数の初期化
 ############################################################
-# 画面装飾を行う「CSS」を記述
-st.markdown(ct.STYLE, unsafe_allow_html=True) #保留
-
-
-############################################################
-# チャット入力の受け付け
-############################################################
-chat_message = st.chat_input(ct.CHAT_INPUT_HELPER_TEXT)
-
-
-############################################################
-# 会話ログの表示
-############################################################
-try:
-    cn.display_conversation_log(chat_message)
-except Exception as e:
-    logger.error(f"{ct.CONVERSATION_LOG_ERROR_MESSAGE}\n{e}")
-    st.error(utils.build_error_message(ct.CONVERSATION_LOG_ERROR_MESSAGE), icon=ct.ERROR_ICON)
-    st.stop()
+conversation = ""
+user_message = ""
+messages = []
+chat_history = []
+total_tokens = 0
+llm = None
+simple_chain = None
+enc = None
+session_id = ""
 
 
 ############################################################
-# チャット送信時の処理
+# コールバック関数
 ############################################################
-if chat_message:
-    # ==========================================
-    # 会話履歴の上限を超えた場合、受け付けない
-    # ==========================================
-    # ユーザーメッセージのトークン数を取得
-    input_tokens = len(st.session_state.enc.encode(chat_message))
-    # トークン数が、受付上限を超えている場合にエラーメッセージを表示
-    if input_tokens > ct.MAX_ALLOWED_TOKENS:
-        with st.chat_message("assistant", avatar=ct.AI_ICON_FILE_PATH):
-            st.error(ct.INPUT_TEXT_LIMIT_ERROR_MESSAGE)
-            st.stop()
-    # トークン数が受付上限を超えていない場合、会話ログ全体のトークン数に加算
-    st.session_state.total_tokens += input_tokens
-
-    # ==========================================
-    # 1. ユーザーメッセージの表示
-    # ==========================================
-    logger.info({"message": chat_message})
-
-    res_box = st.empty()
-    with st.chat_message("user", avatar=ct.USER_ICON_FILE_PATH):
-        st.markdown(chat_message)
-    
-    # ==========================================
-    # 2. LLMからの回答取得 or 問い合わせ処理
-    # ==========================================
-    res_box = st.empty()
+def on_init(state: State):
+    """
+    状態の初期化（各ユーザーセッションごとに実行）
+    """
     try:
-        with st.spinner(ct.SPINNER_TEXT):
-            result = utils.execute_agent_or_chain(chat_message)
+        # グローバルデータから状態を初期化
+        state.messages = []
+        state.chat_history = []
+        state.total_tokens = 0
+        state.conversation = ""
+        state.user_message = ""
+        
+        # グローバルデータから取得
+        state.llm = app_data["llm"]
+        state.simple_chain = app_data["simple_chain"]
+        state.enc = app_data["enc"]
+        state.session_id = app_data["session_id"]
+        
+        logger.info(f"{ct.APP_BOOT_MESSAGE} - Session: {state.session_id}")
+    except Exception as e:
+        logger.error(f"{ct.INITIALIZE_ERROR_MESSAGE}\n{e}")
+        state.conversation = f"\n\n❌ **エラー:** {utils.build_error_message(ct.INITIALIZE_ERROR_MESSAGE)}\n\n---\n\n"
+
+
+def send_message(state: State):
+    """
+    メッセージ送信処理
+    """
+    if not state.user_message or state.user_message.strip() == "":
+        return
+    
+    chat_message = state.user_message.strip()
+    state.user_message = ""  # 入力欄をクリア
+    
+    try:
+        # トークン数チェック
+        input_tokens = len(state.enc.encode(chat_message))
+        if input_tokens > ct.MAX_ALLOWED_TOKENS:
+            state.conversation += f"\n\n❌ **エラー:** {ct.INPUT_TEXT_LIMIT_ERROR_MESSAGE}\n\n---\n\n"
+            return
+        
+        state.total_tokens += input_tokens
+        
+        # ユーザーメッセージを表示
+        state.conversation += f"\n\n**あなた:** {chat_message}\n\n"
+        logger.info({"message": chat_message, "session_id": state.session_id})
+        
+        # ローディング表示
+        state.conversation += "*回答生成中...*\n\n"
+        
+        # LLMからの回答取得
+        result = utils.execute_agent_or_chain(chat_message, state)
+        
+        # ローディングを削除
+        state.conversation = state.conversation.replace("*回答生成中...*\n\n", "")
+        
+        # 古い会話履歴を削除
+        utils.delete_old_conversation_log(result, state)
+        
+        # LLMの回答を表示
+        state.conversation += f"**AI:** `{result}`\n\n---\n\n"
+        logger.info({"message": result, "session_id": state.session_id})
+        
+        # 会話ログに追加
+        state.messages.append({"role": "user", "content": chat_message})
+        state.messages.append({"role": "assistant", "content": result})
+        
     except Exception as e:
         logger.error(f"{ct.MAIN_PROCESS_ERROR_MESSAGE}\n{e}")
-        st.error(utils.build_error_message(ct.MAIN_PROCESS_ERROR_MESSAGE), icon=ct.ERROR_ICON)
-        st.stop()
-    
-    # ==========================================
-    # 3. 古い会話履歴を削除
-    # ==========================================
-    utils.delete_old_conversation_log(result)
+        state.conversation += f"\n\n❌ **エラー:** {utils.build_error_message(ct.MAIN_PROCESS_ERROR_MESSAGE)}\n\n---\n\n"
 
-    # ==========================================
-    # 4. LLMからの回答表示
-    # ==========================================
-    with st.chat_message("assistant", avatar=ct.AI_ICON_FILE_PATH):
-        try:
-            cn.display_llm_response(result)
 
-            logger.info({"message": result})
-        except Exception as e:
-            logger.error(f"{ct.DISP_ANSWER_ERROR_MESSAGE}\n{e}")
-            st.error(utils.build_error_message(ct.DISP_ANSWER_ERROR_MESSAGE), icon=ct.ERROR_ICON)
-            st.stop()
-    
-    # ==========================================
-    # 5. 会話ログへの追加
-    # ==========================================
-    st.session_state.messages.append({"role": "user", "content": chat_message})
-    st.session_state.messages.append({"role": "assistant", "content": result})
-
+############################################################
+# アプリケーション起動
+############################################################
+if __name__ == "__main__":
+    gui = Gui(page)
+    gui.run(
+        host="0.0.0.0",
+        port=8501,
+        title=ct.APP_NAME,
+        dark_mode=False,
+        on_init=on_init
+    )
 

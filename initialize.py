@@ -10,7 +10,6 @@ import logging
 from logging.handlers import TimedRotatingFileHandler
 from uuid import uuid4
 from dotenv import load_dotenv
-import streamlit as st
 import tiktoken
 from langchain_openai import ChatOpenAI
 import utils
@@ -28,38 +27,38 @@ load_dotenv()
 # 関数定義
 ############################################################
 
-def initialize():
+def initialize_app_data():
     """
-    画面読み込み時に実行する初期化処理
+    アプリケーション全体で共有するデータの初期化
+    
+    Returns:
+        dict: 初期化されたアプリデータ
     """
-    # 初期化データの用意
-    initialize_session_state()
-    # ログ出力用にセッションIDを生成
-    initialize_session_id()
     # ログ出力の設定
     initialize_logger()
-    # LLMとChainを作成
-    initialize_llm_chain()
-
-
-def initialize_session_state():
-    """
-    初期化データの用意
-    """
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-        st.session_state.chat_history = []
-        # 会話履歴の合計トークン数を加算する用の変数
-        st.session_state.total_tokens = 0
-
-
-
-def initialize_session_id():
-    """
-    セッションIDの作成
-    """
-    if "session_id" not in st.session_state:
-        st.session_state.session_id = uuid4().hex
+    
+    logger = logging.getLogger(ct.LOGGER_NAME)
+    
+    # セッションIDの生成
+    session_id = uuid4().hex
+    
+    # 消費トークン数カウント用のオブジェクトを用意
+    enc = tiktoken.get_encoding(ct.ENCODING_KIND)
+    
+    # LLMの初期化
+    llm = ChatOpenAI(model_name=ct.MODEL, temperature=ct.TEMPERATURE, streaming=True)
+    
+    # シンプルなChainを作成（RAGなし）
+    simple_chain = utils.create_simple_chain(llm)
+    
+    logger.info(f"アプリデータの初期化が完了しました - Session: {session_id}")
+    
+    return {
+        "session_id": session_id,
+        "enc": enc,
+        "llm": llm,
+        "simple_chain": simple_chain
+    }
 
 
 def initialize_logger():
@@ -79,25 +78,10 @@ def initialize_logger():
         encoding="utf8"
     )
     formatter = logging.Formatter(
-        f"[%(levelname)s] %(asctime)s line %(lineno)s, in %(funcName)s, session_id={st.session_state.session_id}: %(message)s"
+        f"[%(levelname)s] %(asctime)s line %(lineno)s, in %(funcName)s: %(message)s"
     )
     log_handler.setFormatter(formatter)
     logger.setLevel(logging.INFO)
     logger.addHandler(log_handler)
 
-
-def initialize_llm_chain():
-    """
-    画面読み込み時にLLMとシンプルなChainを作成
-    """
-    logger = logging.getLogger(ct.LOGGER_NAME)
-
-    
-    # 消費トークン数カウント用のオブジェクトを用意
-    st.session_state.enc = tiktoken.get_encoding(ct.ENCODING_KIND)
-    
-    st.session_state.llm = ChatOpenAI(model_name=ct.MODEL, temperature=ct.TEMPERATURE, streaming=True)
-
-    # シンプルなChainを作成（RAGなし）
-    st.session_state.simple_chain = utils.create_simple_chain()
 

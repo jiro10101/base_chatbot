@@ -1,6 +1,6 @@
 # 試験実施AIエージェント
 
-このプロジェクトは、Streamlit、LangChain、OpenAIを使用したシンプルなLinuxコマンド生成チャットボットアプリケーションです。
+このプロジェクトは、Taipy、LangChain、OpenAIを使用したシンプルなLinuxコマンド生成チャットボットアプリケーションです。
 
 ## 概要
 
@@ -35,9 +35,6 @@ pip install -r requirements.txt
 ```bash
 # Linux
 pip install -r requirements_linux.txt
-
-# Linux - 完全版（固定バージョン）
-pip install -r requirements_linux_full.txt
 ```
 
 ### 3. 環境変数の設定
@@ -54,8 +51,8 @@ OPENAI_API_KEY=your_openai_api_key_here
 # 仮想環境を有効化
 source venv/bin/activate
 
-# Streamlitアプリを起動
-streamlit run main.py
+# Taipyアプリを起動
+python main.py
 ```
 
 ## 主な機能
@@ -65,7 +62,7 @@ streamlit run main.py
   - 対象デバイス: `/dev/nvme0n1`に限定
   - 最大実行時間: 10秒以下
   - 必須パラメータの自動付与
-- **シンプルなチャットインターフェース**: Streamlitベースの使いやすいUI
+- **シンプルなチャットインターフェース**: Taipy GUIベースの使いやすいUI
 - **会話履歴管理**: トークン数を管理して効率的な会話を維持
 
 ## 使用例
@@ -98,15 +95,13 @@ hostname -I
 ### プロジェクト構成
 
 ```
-kadai2/
-├── main.py              # メインアプリケーション
+base_chatbot/
+├── main.py              # メインアプリケーション（Taipy GUI）
 ├── initialize.py        # 初期化処理（LLM、Chain作成）
 ├── utils.py            # ユーティリティ関数
 ├── components.py       # UIコンポーネント
 ├── constants.py        # 定数定義（プロンプト、設定値）
 ├── requirements.txt    # Python依存パッケージ
-├── .streamlit/
-│   └── config.toml    # Streamlit設定
 ├── data/              # データディレクトリ
 ├── logs/              # ログファイル
 └── images/            # アイコン画像
@@ -116,11 +111,14 @@ kadai2/
 
 - **LLMモデル**: OpenAI GPT-4o-mini
 - **フレームワーク**: LangChain (Classic) 1.0+
-- **UI**: Streamlit 1.45+
+- **UI**: Taipy 3.0+
 - **会話管理**: LangChainのメッセージ履歴とトークンカウント
 
-### 最近の変更（RAG機能削除）
+### 最近の変更
 
+- ✅ StreamlitからTaipyへUIフレームワークを移行
+- ✅ グローバル状態管理からセッションベースの状態管理に変更
+- ✅ マークダウンベースのUI定義に移行
 - ✅ RAG（検索拡張生成）機能を削除してシンプル化
 - ✅ ベクトルDB（ChromaDB）関連の依存関係を削除
 - ✅ ドキュメント処理（PDF、DOCX）機能を削除
@@ -151,17 +149,20 @@ find . -type f -name "*.pyc" -delete
 ### ポートが使用中
 
 ```bash
-# 既存のStreamlitプロセスを停止
-pkill -f "streamlit run"
+# 既存のプロセスを停止
+pkill -f "python main.py"
 
-# または別のポートを使用
-streamlit run main.py --server.port 8502
+# または別のポートを使用（main.pyのport設定を変更）
 ```
 
-### LangChainバージョン問題
+### Taipyバージョン問題
 
-`langchain 1.0`以降では多くのモジュールが再構成されています。
-このプロジェクトは`langchain-classic`を使用して互換性を確保しています。
+このプロジェクトはTaipy 3.0以上を必要とします。
+互換性の問題が発生した場合は、最新版へのアップグレードを試してください：
+
+```bash
+pip install --upgrade taipy
+```
 
 ## ライセンス
 
