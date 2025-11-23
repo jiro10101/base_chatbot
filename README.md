@@ -4,7 +4,7 @@
 
 ## 概要
 
-ユーザーが指定したパラメータ（FWVer、Testscript、TestingEnvironment、Model、Testtool）に基づいて、指定されたフォーマットに従ったスクリプト名を自動生成するAIアシスタントです。パラメータが不足している場合は、複数の組み合わせ例を提示してユーザーをサポートします。
+ユーザーが指定したパラメータ（FWVer、Testscript、TestingEnvironment、Model）に基づいて、指定されたフォーマットに従ったスクリプト名を自動生成するAIアシスタントです。パラメータが不足している場合は、複数の組み合わせ例を提示してユーザーをサポートします。
 
 ## セットアップ
 
@@ -61,7 +61,7 @@ streamlit run main.py
 
 - **スクリプト名の自動生成**: 指定されたパラメータから標準フォーマットのスクリプト名を生成
 - **パラメータの入力サポート**: 
-  - 必須パラメータ: FWVer、Testscript、TestingEnvironment、Model、Testtool
+  - 必須パラメータ: FWVer、Testscript、TestingEnvironment、Model
   - パラメータ不足時は複数の組み合わせ例を提示
 - **シンプルなチャットインターフェース**: Streamlitベースの使いやすいUI
 - **会話履歴管理**: トークン数（上限2000）を管理して効率的な会話を維持
@@ -70,8 +70,8 @@ streamlit run main.py
 
 ### 全パラメータ指定時
 ```
-ユーザー: FWVer: 1.00, Model: ModelA, Testscript: rand_read_simple.sh, TestingEnvironment: 100.67.161.104, Testtool: r3
-AI: Testtoolsqript_r3 1.00 rand_read_simple.sh ModelA 100.67.161.104
+ユーザー: FWVer: 1.00, Model: ModelA, Testscript: rand_read_simple.sh, TestingEnvironment: 100.67.161.104
+AI: Testtoolsqript.sh 1.00 rand_read_simple.sh ModelA 100.67.161.104
 ```
 
 ### パラメータ不足時
@@ -80,7 +80,6 @@ AI: Testtoolsqript_r3 1.00 rand_read_simple.sh ModelA 100.67.161.104
 AI: 以下を指定してください。
 1. Testscript [試験スクリプト名]: 例 rand_read_simple.sh, rand_write_simple.sh
 2. TestingEnvironment [試験環境]: 例 100.67.161.104, 192.168.20.20
-3. Testtool [試験ツールのVer]: 例 r3, r5, r2
 
 [複数の組み合わせ例を3つ程度提示]
 ```
@@ -147,7 +146,7 @@ base_chatbot/
 
 生成されるスクリプト名のフォーマット：
 ```
-Testtoolsqript_[Testtool] [FWVer] [Testscript] [Model] [TestingEnvironment]
+Testtoolsqript.sh [FWVer] [Testscript] [Model] [TestingEnvironment]
 ```
 
 **パラメータ例:**
@@ -155,7 +154,6 @@ Testtoolsqript_[Testtool] [FWVer] [Testscript] [Model] [TestingEnvironment]
 - **Testscript**: `rand_read_simple.sh`, `rand_write_simple.sh`, `seq_read_simple.sh`, `seq_write_simple.sh`
 - **TestingEnvironment**: `100.67.161.104`, `192.168.20.20`
 - **Model**: `ModelA`, `ModelB`, `ModelC`
-- **Testtool**: `r3`, `r5`, `r2`
 
 ## トラブルシューティング
 

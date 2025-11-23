@@ -64,15 +64,14 @@ SYSTEM_PROMPT_INQUIRY = """
 2.  **Testscript**: `rand_read_simple.sh`, `rand_write_simple.sh`, `seq_read_simple.sh`, `seq_write_simple.sh`
 3.  **TestingEnvironment**: `100.67.161.104`, `192.168.20.20`
 4.  **Model**: `ModelA`, `ModelB`, `ModelC`
-5.  **Testtool**: `r3`, `r5`, `r2`
 
 **出力フォーマット:**
-`Testtoolsqript_[Testtool] [FWVer] [Testscript] [Model] [TestingEnvironment]`
+`Testtoolsqript.sh [FWVer] [Testscript] [Model] [TestingEnvironment]`
 
 **実行ルール:**
 
-1.  **全パラメータ指定時:** ユーザーが `Testtool`, `FWVer`, `Testscript`, `Model`,[TestingEnvironment] の5つ全てを指定した場合、その値を使って出力フォーマットに従いスクリプト名を生成します。
-2.  **パラメータ不足時:** ユーザーが必要な5つのパラメータのうち、**1つでも指定しなかった場合**は、以下の処理を行います。
+1.  **全パラメータ指定時:** ユーザーが `FWVer`, `Testscript`, `Model`, `TestingEnvironment` の4つ全てを指定した場合、その値を使って出力フォーマットに従いスクリプト名を生成します。
+2.  **パラメータ不足時:** ユーザーが必要な4つのパラメータのうち、**1つでも指定しなかった場合**は、以下の処理を行います。
     * ユーザーが指定したパラメータを固定します。
     * 指定されなかったパラメータについて、「入力パラメータ」セクションの例のリストから、**複数の異なる組み合わせ**を作成します。
     * それらの組み合わせから生成されるスクリプト名の例を**3つ程度**提示し、ユーザーに選択を促します。
@@ -80,22 +79,24 @@ SYSTEM_PROMPT_INQUIRY = """
 ---
 ### 動作例
 
-**例1：ユーザーが一部しか指定しない場合**
-
->以下を指定してください。
->1.  **FWVer** [試験対象のFWVer]: 例 `1.00`, `1.20`, `1.04`
->2.  **Model** [試験対象の気象]:例   `ModelA`, `ModelB`, `ModelC`
->3.  **Testscript** [試験スクリプト名]: 例  `rand_read_simple.sh`, `rand_write_simple.sh`, `seq_read_simple.sh`, `seq_write_simple.sh`
->4.  **TestingEnvironment** [試験環境]: 例  `100.67.161.104`, `192.168.20.20`
->5.  **Testtool** [試験ツールのVer]: 例  `r3`, `r5`, `r2`
+**例1：全パラメータ指定時**
+ユーザー入力: FWVer: 1.00, Testscript: rand_read_simple.sh, Model: ModelA, TestingEnvironment: 100.67.161.104
+出力: Testtoolsqript.sh 1.00 rand_read_simple.sh ModelA 100.67.161.104
 
 **例2：ユーザーが一部しか指定しない場合**
 
 >以下を指定してください。
 >1.  **FWVer** [試験対象のFWVer]: 例 `1.00`, `1.20`, `1.04`
->3.  **Testscript** [試験スクリプト名]: 例  `rand_read_simple.sh`, `rand_write_simple.sh`, `seq_read_simple.sh`, `seq_write_simple.sh`
->4.  **TestingEnvironment** [試験環境]: 例  `100.67.161.104`, `192.168.20.20`
->5.  **Testtool** [試験ツールのVer]: 例  `r3`, `r5`, `r2`
+>2.  **Model** [試験対象の機種]: 例 `ModelA`, `ModelB`, `ModelC`
+>3.  **Testscript** [試験スクリプト名]: 例 `rand_read_simple.sh`, `rand_write_simple.sh`, `seq_read_simple.sh`, `seq_write_simple.sh`
+>4.  **TestingEnvironment** [試験環境]: 例 `100.67.161.104`, `192.168.20.20`
+
+**例3：ユーザーが一部のパラメータを指定した場合**
+
+>以下を指定してください。
+>1.  **FWVer** [試験対象のFWVer]: 例 `1.00`, `1.20`, `1.04`
+>2.  **Testscript** [試験スクリプト名]: 例 `rand_read_simple.sh`, `rand_write_simple.sh`, `seq_read_simple.sh`, `seq_write_simple.sh`
+>3.  **TestingEnvironment** [試験環境]: 例 `100.67.161.104`, `192.168.20.20`
 >
 >以下は指定されています。
 >* Model: ModelB
@@ -108,10 +109,12 @@ SYSTEM_PROMPT_INQUIRY = """
 # 外部アプリ連携
 # ==========================================
 EXTERNAL_APP_URL = "http://100.64.1.47:8503"
-TESTSCRIPT_TRIGGER_KEYWORD = "Testtoolsqript_"
+TESTSCRIPT_TRIGGER_KEYWORD = "Testtoolsqript.sh"
 
 
 # ==========================================
+# スクリプト実行関連
+# ==========================================# ==========================================
 # エラー・警告メッセージ
 # ==========================================
 COMMON_ERROR_MESSAGE = "このエラーが繰り返し発生する場合は、管理者にお問い合わせください。"

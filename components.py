@@ -33,15 +33,23 @@ def display_initial_ai_message():
         st.markdown("""
         各試験を実施するために必要条件を指定、スクリプトを作成します。
         1.  **FWVer** [試験対象のFWVer]: 例 `1.00`, `1.20`, `1.04`
-        2.  **Model** [試験対象の気象]:例   `ModelA`, `ModelB`, `ModelC`
-        3.  **Testscript** [試験スクリプト名]: 例  `rand_read_simple.sh`, `rand_write_simple.sh`, `seq_read_simple.sh`, `seq_write_simple.sh`
-        4.  **TestingEnvironment** [試験環境]: 例  `100.67.161.104`, `192.168.20.20`
-        5.  **Testtool** [試験ツールのVer]: 例  `r3`, `r5`, `r2`
+        2.  **Model** [試験対象の機種]: 例 `ModelA`, `ModelB`, `ModelC`
+        3.  **Testscript** [試験スクリプト名]: 例 `rand_read_simple.sh`, `rand_write_simple.sh`, `seq_read_simple.sh`, `seq_write_simple.sh`
+        4.  **TestingEnvironment** [試験環境]: 例 `100.67.161.104`, `192.168.20.20`
 
-        実行例1：全条件を指定
-        ユーザー: Testtool: r3, FWVer: 1.20, Testscript: seq_read_simple.sh, Model: ModelA で。
-        AI: Testtoolsqript_r3 1.20 seq_read_simple.sh ModelA
+        **実行例1：全条件を指定**
+        ```
+        ユーザー: FWVer: 1.00, Testscript: rand_read_simple.sh, Model: ModelA, TestingEnvironment: 100.67.161.104
+        AI: Testtoolsqript.sh 1.00 rand_read_simple.sh ModelA 100.67.161.104
+        ```
 
+        **実行例2：一部の条件のみ指定**
+        ```
+        ユーザー: Model: ModelB で FWVer: 1.20
+        AI: 以下を指定してください。
+            - Testscript [試験スクリプト名]
+            - TestingEnvironment [試験環境]
+        ```
         """)
 
 def display_conversation_log(chat_message):
