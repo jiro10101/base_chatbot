@@ -70,15 +70,15 @@ streamlit run main.py
 
 ### 全パラメータ指定時
 ```
-ユーザー: FWVer: 1.00, Model: ModelA, Testscript: rand_read_simple.sh, TestingEnvironment: 100.67.161.104
-AI: Testtoolsqript.sh 1.00 rand_read_simple.sh ModelA 100.67.161.104
+ユーザー: FWVer: 1.00, Model: ModelA, Testscript: /home/jiro/fioスクリプト/rand_read_simple.sh, TestingEnvironment: 100.67.161.104
+AI: /home/jiro/fioスクリプト/Testtoolsqript.sh 1.00 /home/jiro/fioスクリプト/rand_read_simple.sh ModelA 100.67.161.104
 ```
 
 ### パラメータ不足時
 ```
 ユーザー: FWVer: 1.20, Model: ModelB
 AI: 以下を指定してください。
-1. Testscript [試験スクリプト名]: 例 rand_read_simple.sh, rand_write_simple.sh
+1. Testscript [試験スクリプト名]: 例 /home/jiro/fioスクリプト/rand_read_simple.sh, /home/jiro/fioスクリプト/rand_write_simple.sh
 2. TestingEnvironment [試験環境]: 例 100.67.161.104, 192.168.20.20
 
 [複数の組み合わせ例を3つ程度提示]
@@ -146,12 +146,12 @@ base_chatbot/
 
 生成されるスクリプト名のフォーマット：
 ```
-Testtoolsqript.sh [FWVer] [Testscript] [Model] [TestingEnvironment]
+/home/jiro/fioスクリプト/Testtoolsqript.sh [FWVer] [Testscript] [Model] [TestingEnvironment]
 ```
 
 **パラメータ例:**
 - **FWVer**: `1.00`, `1.20`, `1.04`
-- **Testscript**: `rand_read_simple.sh`, `rand_write_simple.sh`, `seq_read_simple.sh`, `seq_write_simple.sh`
+- **Testscript**: `/home/jiro/fioスクリプト/rand_read_simple.sh`, `/home/jiro/fioスクリプト/rand_write_simple.sh`, `/home/jiro/fioスクリプト/seq_read_simple.sh`, `/home/jiro/fioスクリプト/seq_write_simple.sh`
 - **TestingEnvironment**: `100.67.161.104`, `192.168.20.20`
 - **Model**: `ModelA`, `ModelB`, `ModelC`
 
