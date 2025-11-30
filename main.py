@@ -103,12 +103,20 @@ if chat_message:
         st.markdown(chat_message)
     
     # ==========================================
-    # 2. LLMからの回答取得 or 問い合わせ処理
+    # 2. コマンド検証とLLMからの回答取得
     # ==========================================
     res_box = st.empty()
     try:
         with st.spinner(ct.SPINNER_TEXT):
-            result = utils.execute_agent_or_chain(chat_message)
+            # まずコマンド形式をチェック
+            validation_result = utils.validate_command_format(chat_message)
+            
+            if validation_result["valid"]:
+                # コマンドが正しい形式の場合、そのまま実行結果を通知
+                result = f"✓ コマンドの形式が正しいです。\n\nコマンド: `{validation_result['command']}`\n\n「Screen実行」ボタンで実行できます。"
+            else:
+                # コマンド形式が正しくない場合、LLMに問い合わせ
+                result = utils.execute_agent_or_chain(chat_message)
     except Exception as e:
         logger.error(f"{ct.MAIN_PROCESS_ERROR_MESSAGE}\n{e}")
         st.error(utils.build_error_message(ct.MAIN_PROCESS_ERROR_MESSAGE), icon=ct.ERROR_ICON)
@@ -126,9 +134,10 @@ if chat_message:
         try:
             cn.display_llm_response(result)
             
-            # Testscriptを含む場合、外部アプリ起動オプションを表示
-            if utils.check_testscript_response(result):
-                cn.display_external_app_launch_option(result.strip())
+            # 有効なコマンドの場合、外部アプリ起動オプションとScreen実行オプションを表示
+            validation_result = utils.validate_command_format(chat_message)
+            if validation_result["valid"]:
+                cn.display_external_app_launch_option(validation_result["command"])
 
             logger.info({"message": result})
         except Exception as e:
