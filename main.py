@@ -154,3 +154,32 @@ if chat_message:
     st.session_state.messages.append({"role": "assistant", "content": result})
 
 
+############################################################
+# Redmineチケット作成ボタンの表示判定
+############################################################
+if "messages" in st.session_state and st.session_state.messages:
+    last_msg = st.session_state.messages[-1]
+    
+    # 最後のメッセージがAIからのもので、かつチケットドラフトを含んでいる場合
+    if last_msg["role"] == "assistant":
+        draft_data = utils.parse_ticket_draft(last_msg["content"])
+        
+        if draft_data:
+            st.divider()
+            col1, col2 = st.columns([1, 2])
+            with col1:
+                if st.button("Redmineにチケット作成", type="primary"):
+                    with st.spinner("Redmineにチケットを作成しています..."):
+                        # プロジェクトIDは環境変数から自動取得される
+                        new_ticket_id = utils.create_redmine_issue(draft_data)
+                        
+                        if new_ticket_id:
+                            st.success(f"✅ チケット #{new_ticket_id} を作成しました！")
+                            logger.info(f"Ticket created: {new_ticket_id}")
+                        else:
+                            st.error("❌ チケット作成に失敗しました。ログを確認してください。")
+            with col2:
+                st.caption("※ 上記の内容でRedmineにチケットを作成します")
+
+
+

@@ -276,3 +276,93 @@ def extract_redmine_issue_id(message: str) -> Optional[str]:
             return match.group(1)
     
     return None
+
+
+def create_redmine_issue(issue_data: Dict) -> Optional[int]:
+    """
+    Redmineにチケットを作成する
+
+    Args:
+        issue_data: 作成するチケット情報の辞書 (project_id, subject, description, priority_idなど)
+
+    Returns:
+        作成されたチケットID (成功時)、None (失敗時)
+    """
+    logger = logging.getLogger(ct.LOGGER_NAME)
+
+    # 環境変数からRedmine設定を取得
+    redmine_url = os.getenv("REDMINE_URL", ct.REDMINE_URL)
+    redmine_api_key = os.getenv("REDMINE_API_KEY", ct.REDMINE_API_KEY)
+    
+    # プロジェクトIDは引数になければ環境変数から取得
+    if "project_id" not in issue_data:
+        issue_data["project_id"] = os.getenv("REDMINE_PROJECT_ID")
+
+    if not redmine_url or not redmine_api_key or not issue_data.get("project_id"):
+        logger.error("Redmine URL, API Key, または Project ID が設定されていません")
+        return None
+
+    try:
+        url = f"{redmine_url}/issues.json"
+        headers = {
+            "X-Redmine-API-Key": redmine_api_key,
+            "Content-Type": "application/json"
+        }
+        
+        payload = {"issue": issue_data}
+
+        response = requests.post(url, headers=headers, json=payload, timeout=10)
+        response.raise_for_status()
+        
+        created_issue = response.json().get("issue", {})
+        new_id = created_issue.get("id")
+        
+        if new_id:
+            logger.info(f"Redmineチケット #{new_id} を作成しました")
+            return new_id
+        else:
+            logger.error("チケット作成レスポンスにIDが含まれていません")
+            return None
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Redmineチケット作成エラー: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"予期しないエラー: {e}")
+        return None
+
+
+def parse_ticket_draft(text: str) -> Optional[Dict]:
+    """
+    AIの回答からチケットの題名と説明を抽出する
+
+    Args:
+        text: AIの回答テキスト
+
+    Returns:
+        {'subject': str, 'description': str} の辞書 (抽出できた場合) or None
+    """
+    import re
+    
+    # 題名と説明の抽出パターン
+    # **題名:** の後の行、または同じ行の続き
+    subject_pattern = r'\*\*題名:\*\*\s*(.*?)(\n|$)'
+    
+    # **説明:** の後、次のセクション(**XXX:**)または文末まで
+    description_pattern = r'\*\*説明:\*\*\s*(.*?)(\n\*\*|$)'
+    
+    subject_match = re.search(subject_pattern, text, re.DOTALL)
+    description_match = re.search(description_pattern, text, re.DOTALL)
+    
+    if subject_match and description_match:
+        subject = subject_match.group(1).strip()
+        description = description_match.group(1).strip()
+        
+        # 題名が空でないことを確認
+        if subject:
+            return {
+                "subject": subject,
+                "description": description
+            }
+            
+    return None
