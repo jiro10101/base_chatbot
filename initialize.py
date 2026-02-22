@@ -1,15 +1,13 @@
 """
-このファイルは、最初の画面読み込み時にのみ実行される初期化処理が記述されたファイルです。
+アプリ起動時（画面の初回読み込み時）にのみ実行される初期化処理を定義するファイル。
+Streamlit はページ再描画のたびにスクリプト全体を再実行するため、
+session_state の有無をチェックして二重初期化を防ぐ。
 """
 
-############################################################
-# ライブラリの読み込み
-############################################################
 import os
 import logging
 from logging.handlers import TimedRotatingFileHandler
 from uuid import uuid4
-from dotenv import load_dotenv
 import streamlit as st
 import tiktoken
 from langchain_openai import ChatOpenAI
@@ -17,65 +15,54 @@ import utils
 import constants as ct
 
 
-
-############################################################
-# 設定関連
-############################################################
-load_dotenv()
-
-
-############################################################
-# 関数定義
-############################################################
-
 def initialize():
-    """
-    画面読み込み時に実行する初期化処理
-    """
-    # 初期化データの用意
+    """アプリ起動時に必要な初期化処理をまとめて実行する"""
     initialize_session_state()
-    # ログ出力用にセッションIDを生成
     initialize_session_id()
-    # ログ出力の設定
     initialize_logger()
-    # LLMとChainを作成
     initialize_llm_chain()
 
 
 def initialize_session_state():
     """
-    初期化データの用意
+    session_state の初期値をセットする。
+    すでに初期化済みの場合は何もしない（再描画時の上書き防止）。
+
+    - messages      : 画面表示用の会話ログ（role/content の辞書リスト）
+    - chat_history  : LangChain に渡す会話履歴（HumanMessage/AIMessage のリスト）
+    - total_tokens  : 会話履歴の累計トークン数（上限管理用）
+    - current_command: チャットから抽出した最新の有効コマンド
+    - exec_result   : Screen 実行の結果（サイドバー表示用）
     """
     if "messages" not in st.session_state:
         st.session_state.messages = []
         st.session_state.chat_history = []
-        # 会話履歴の合計トークン数を加算する用の変数
         st.session_state.total_tokens = 0
-
+        st.session_state.current_command = None
+        st.session_state.exec_result = None
 
 
 def initialize_session_id():
-    """
-    セッションIDの作成
-    """
+    """ログ出力用のセッションIDを生成する（セッションをまたいで追跡するため）"""
     if "session_id" not in st.session_state:
         st.session_state.session_id = uuid4().hex
 
 
 def initialize_logger():
     """
-    ログ出力の設定
+    日次ローテーションのファイルロガーを設定する。
+    ハンドラーが既に存在する場合はスキップ（Streamlit 再描画時の重複登録防止）。
+    ログ出力先: {LOG_DIR_PATH}/application.log
     """
     os.makedirs(ct.LOG_DIR_PATH, exist_ok=True)
 
     logger = logging.getLogger(ct.LOGGER_NAME)
-
     if logger.hasHandlers():
-        return
+        return  # 既にセットアップ済み
 
     log_handler = TimedRotatingFileHandler(
         os.path.join(ct.LOG_DIR_PATH, ct.LOG_FILE),
-        when="D",
+        when="D",        # D = 日次でローテーション
         encoding="utf8"
     )
     formatter = logging.Formatter(
@@ -88,16 +75,11 @@ def initialize_logger():
 
 def initialize_llm_chain():
     """
-    画面読み込み時にLLMとシンプルなChainを作成
+    LLM（ChatOpenAI）とトークンカウンター（tiktoken）を初期化し、
+    LangChain LCEL パイプラインを構築して session_state に保存する。
     """
-    logger = logging.getLogger(ct.LOGGER_NAME)
-
-    
-    # 消費トークン数カウント用のオブジェクトを用意
+    # トークン数カウント用エンコーダー（会話履歴の上限管理に使用）
     st.session_state.enc = tiktoken.get_encoding(ct.ENCODING_KIND)
-    
     st.session_state.llm = ChatOpenAI(model_name=ct.MODEL, temperature=ct.TEMPERATURE, streaming=True)
-
-    # シンプルなChainを作成（RAGなし）
+    # Chain は LLM に依存するため、LLM 生成後に構築する
     st.session_state.simple_chain = utils.create_simple_chain()
-
