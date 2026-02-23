@@ -70,13 +70,17 @@ def validate_command_format(command):
     """
     入力文字列が fio 試験コマンドの正規フォーマットかどうかを検証する。
     期待フォーマット:
-        /home/jiro/fioスクリプト/Testtoolsqript.sh [FWVer] [Testscript] [Model] [Environment]
+        {FIO_SCRIPT_DIR}/Testtoolsqript.sh [FWVer] [Testscript] [Model] [Environment]
+        ※ FIO_SCRIPT_DIR は環境変数で変更可能（constants.py 参照）
     戻り値: dict { valid, message, params, command }
     """
     logger = logging.getLogger(ct.LOGGER_NAME)
 
     # グループ1: FWVer / グループ2: テストスクリプトパス / グループ3: Model / グループ4: 環境IPアドレス
-    pattern = r'/home/jiro/fioスクリプト/Testtoolsqript\.sh\s+(\S+)\s+(/home/jiro/fioスクリプト/\S+\.sh)\s+(\S+)\s+([\d.]+)'
+    # パスは環境変数 FIO_SCRIPT_DIR に依存するため、定数から動的に生成する
+    trigger  = re.escape(ct.TESTSCRIPT_TRIGGER_KEYWORD)
+    script_dir = re.escape(ct.FIO_SCRIPT_DIR)
+    pattern = rf'{trigger}\s+(\S+)\s+({script_dir}/\S+\.sh)\s+(\S+)\s+([\d.]+)'
     match = re.search(pattern, command)
 
     if match:

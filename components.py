@@ -18,21 +18,22 @@ def display_initial_ai_message():
     初回表示時のAIウェルカムメッセージと使用例を表示する。
     使用例は expander で折りたたんで表示する。
     """
+    d = ct.FIO_SCRIPT_DIR
     with st.chat_message("assistant", avatar=ct.AI_ICON_FILE_PATH):
         st.success("わかる条件だけ伝えてくれれば、AIがスクリプトの候補を作ります。")
     # 使用例の表示
     with st.expander("💡 使用例", expanded=False):
-        st.markdown("""
+        st.markdown(f"""
         各試験を実施するために必要条件を指定、スクリプトを作成します。
         1.  **FWVer** [試験対象のFWVer]: 例 `1.00`, `1.20`, `1.04`
         2.  **Model** [試験対象の機種]: 例 `ModelA`, `ModelB`, `ModelC`
-        3.  **Testscript** [試験スクリプト名]: 例 `/home/jiro/fioスクリプト/rand_read_simple.sh`, `/home/jiro/fioスクリプト/rand_write_simple.sh`, `/home/jiro/fioスクリプト/seq_read_simple.sh`, `/home/jiro/fioスクリプト/seq_write_simple.sh`
+        3.  **Testscript** [試験スクリプト名]: 例 `{d}/rand_read_simple.sh`, `{d}/rand_write_simple.sh`, `{d}/seq_read_simple.sh`, `{d}/seq_write_simple.sh`
         4.  **TestingEnvironment** [試験環境]: 例 `100.67.161.104`, `192.168.20.20`
 
         **実行例1：全条件を指定**
         ```
-        ユーザー: FWVer: 1.00, Testscript: /home/jiro/fioスクリプト/rand_read_simple.sh, Model: ModelA, TestingEnvironment: 100.67.161.104
-        AI: /home/jiro/fioスクリプト/Testtoolsqript.sh 1.00 /home/jiro/fioスクリプト/rand_read_simple.sh ModelA 100.67.161.104
+        ユーザー: FWVer: 1.00, Testscript: {d}/rand_read_simple.sh, Model: ModelA, TestingEnvironment: 100.67.161.104
+        AI: {d}/Testtoolsqript.sh 1.00 {d}/rand_read_simple.sh ModelA 100.67.161.104
         ```
 
         **実行例2：一部の条件のみ指定**

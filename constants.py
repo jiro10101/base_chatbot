@@ -27,8 +27,14 @@ TEMPERATURE = 0.5
 MAX_ALLOWED_TOKENS = 2000
 ENCODING_KIND = "cl100k_base"
 
+# パス設定（環境変数で上書き可能）※ SYSTEM_PROMPT_INQUIRY より前に定義する必要あり
+FIO_SCRIPT_DIR             = os.getenv("FIO_SCRIPT_DIR",  "/home/jiro/fioスクリプト")
+TESTSCRIPT_TRIGGER_KEYWORD = f"{FIO_SCRIPT_DIR}/Testtoolsqript.sh"
+RESULTS_DIR                = os.getenv("RESULTS_DIR",      "/home/jiro/streamlitfio_test/test_check_run/results")
+EXTERNAL_APP_URL           = os.getenv("EXTERNAL_APP_URL", "http://100.64.1.47:8503")
+
 # プロンプトテンプレート
-SYSTEM_PROMPT_INQUIRY = """
+SYSTEM_PROMPT_INQUIRY = f"""
 あなたは、スクリプト作成者です。以下の条件、目的に従って、スクリプトを作成してください。
 
 # AI指示書: スクリプト名生成
@@ -40,12 +46,12 @@ SYSTEM_PROMPT_INQUIRY = """
 **入力パラメータ:**
 （AIが提案時に使用する例のリスト）
 1.  **FWVer**: `1.00`, `1.20`, `1.04`
-2.  **Testscript**: `/home/jiro/fioスクリプト/rand_read_simple.sh`, `/home/jiro/fioスクリプト/rand_write_simple.sh`, `/home/jiro/fioスクリプト/seq_read_simple.sh`, `/home/jiro/fioスクリプト/seq_write_simple.sh`
+2.  **Testscript**: `{FIO_SCRIPT_DIR}/rand_read_simple.sh`, `{FIO_SCRIPT_DIR}/rand_write_simple.sh`, `{FIO_SCRIPT_DIR}/seq_read_simple.sh`, `{FIO_SCRIPT_DIR}/seq_write_simple.sh`
 3.  **TestingEnvironment**: `100.67.161.104`, `192.168.20.20`
 4.  **Model**: `ModelA`, `ModelB`, `ModelC`
 
 **出力フォーマット:**
-`/home/jiro/fioスクリプト/Testtoolsqript.sh [FWVer] [Testscript] [Model] [TestingEnvironment]`
+`{FIO_SCRIPT_DIR}/Testtoolsqript.sh [FWVer] [Testscript] [Model] [TestingEnvironment]`
 
 **実行ルール:**
 
@@ -59,35 +65,28 @@ SYSTEM_PROMPT_INQUIRY = """
 ### 動作例
 
 **例1：全パラメータ指定時**
-ユーザー入力: FWVer: 1.00, Testscript: /home/jiro/fioスクリプト/rand_read_simple.sh, Model: ModelA, TestingEnvironment: 100.67.161.104
-出力: /home/jiro/fioスクリプト/Testtoolsqript.sh 1.00 /home/jiro/fioスクリプト/rand_read_simple.sh ModelA 100.67.161.104
+ユーザー入力: FWVer: 1.00, Testscript: {FIO_SCRIPT_DIR}/rand_read_simple.sh, Model: ModelA, TestingEnvironment: 100.67.161.104
+出力: {FIO_SCRIPT_DIR}/Testtoolsqript.sh 1.00 {FIO_SCRIPT_DIR}/rand_read_simple.sh ModelA 100.67.161.104
 
 **例2：ユーザーが一部しか指定しない場合**
 
 >以下を指定してください。
 >1.  **FWVer** [試験対象のFWVer]: 例 `1.00`, `1.20`, `1.04`
 >2.  **Model** [試験対象の機種]: 例 `ModelA`, `ModelB`, `ModelC`
->3.  **Testscript** [試験スクリプト名]: 例 `/home/jiro/fioスクリプト/rand_read_simple.sh`, `/home/jiro/fioスクリプト/rand_write_simple.sh`, `/home/jiro/fioスクリプト/seq_read_simple.sh`, `/home/jiro/fioスクリプト/seq_write_simple.sh`
+>3.  **Testscript** [試験スクリプト名]: 例 `{FIO_SCRIPT_DIR}/rand_read_simple.sh`, `{FIO_SCRIPT_DIR}/rand_write_simple.sh`, `{FIO_SCRIPT_DIR}/seq_read_simple.sh`, `{FIO_SCRIPT_DIR}/seq_write_simple.sh`
 >4.  **TestingEnvironment** [試験環境]: 例 `100.67.161.104`, `192.168.20.20`
 
 **例3：ユーザーが一部のパラメータを指定した場合**
 
 >以下を指定してください。
 >1.  **FWVer** [試験対象のFWVer]: 例 `1.00`, `1.20`, `1.04`
->2.  **Testscript** [試験スクリプト名]: 例 `/home/jiro/fioスクリプト/rand_read_simple.sh`, `/home/jiro/fioスクリプト/rand_write_simple.sh`, `/home/jiro/fioスクリプト/seq_read_simple.sh`, `/home/jiro/fioスクリプト/seq_write_simple.sh`
+>2.  **Testscript** [試験スクリプト名]: 例 `{FIO_SCRIPT_DIR}/rand_read_simple.sh`, `{FIO_SCRIPT_DIR}/rand_write_simple.sh`, `{FIO_SCRIPT_DIR}/seq_read_simple.sh`, `{FIO_SCRIPT_DIR}/seq_write_simple.sh`
 >3.  **TestingEnvironment** [試験環境]: 例 `100.67.161.104`, `192.168.20.20`
 >
 >以下は指定されています。
 >* Model: ModelB
 
 """
-
-# 外部アプリ連携
-EXTERNAL_APP_URL = "http://100.64.1.47:8503"
-TESTSCRIPT_TRIGGER_KEYWORD = "/home/jiro/fioスクリプト/Testtoolsqript.sh"
-
-# パス設定（環境変数で上書き可能）
-RESULTS_DIR = os.getenv("RESULTS_DIR", "/home/jiro/streamlitfio_test/test_check_run/results")
 
 # エラー・警告メッセージ
 COMMON_ERROR_MESSAGE = "このエラーが繰り返し発生する場合は、管理者にお問い合わせください。"

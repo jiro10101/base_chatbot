@@ -15,7 +15,12 @@
 
 ## プロジェクト概要
 
-Streamlit + LangChain + OpenAI を使用した、fio 試験スクリプト実行コマンドを自動生成する AI チャットボットアプリケーション。ユーザーが入力したパラメータを元に正しいコマンド文字列を生成し、そのままサーバー上で `screen` を使って実行する機能を持つ。
+Streamlit + LangChain + OpenAI を使用した、fio 試験スクリプト実行コマンドを自動生成する AI チャットボットアプリケーション。以下の4つの機能で成功基準を満たす。
+
+1. **コマンド自動生成**（成功基準①）: パラメータを会話形式で収集し、`Testtoolsqript.sh` の正しいコマンドを生成する
+2. **実施状況の可視化**（成功基準②）: `screen` でバックグラウンド実行し、サイドバーで成功・失敗・セッション一覧をリアルタイムに表示する
+3. **過去ログの確認**（成功基準③）: サイドバーの「テスト結果」タブで fio の JSON 結果ファイルを読み込み、IOPS・帯域幅を一覧表示する
+4. **エラー内容のフィードバック**（成功基準④）: コマンド検証エラー・Screen 実行失敗・例外発生時に、原因をユーザーが理解できるメッセージで表示する
 
 ---
 
@@ -38,14 +43,16 @@ Streamlit + LangChain + OpenAI を使用した、fio 試験スクリプト実行
 
 ## 主要な設定値（constants.py）
 
-| 定数 | 値 | 説明 |
+| 定数 | デフォルト値 | 説明 |
 |---|---|---|
 | `MODEL` | `gpt-4o-mini` | 使用する OpenAI モデル |
 | `TEMPERATURE` | `0.5` | LLM の温度パラメータ |
 | `MAX_ALLOWED_TOKENS` | `2000` | 会話履歴の最大トークン数 |
 | `ENCODING_KIND` | `cl100k_base` | tiktoken のエンコーディング種別 |
-| `EXTERNAL_APP_URL` | `http://100.64.1.47:8503` | 外部アプリの URL |
-| `TESTSCRIPT_TRIGGER_KEYWORD` | `/home/jiro/fioスクリプト/Testtoolsqript.sh` | コマンド検出キーワード |
+| `EXTERNAL_APP_URL` | `http://100.64.1.47:8503` | 外部アプリの URL（環境変数 `EXTERNAL_APP_URL` で上書き可） |
+| `FIO_SCRIPT_DIR` | `/home/jiro/fioスクリプト` | fio スクリプトが置かれているディレクトリ（環境変数 `FIO_SCRIPT_DIR` で上書き可） |
+| `TESTSCRIPT_TRIGGER_KEYWORD` | `{FIO_SCRIPT_DIR}/Testtoolsqript.sh` | コマンド検出キーワード（`FIO_SCRIPT_DIR` から自動生成） |
+| `RESULTS_DIR` | `/home/jiro/streamlitfio_test/test_check_run/results` | fio 結果 JSON の格納ディレクトリ（環境変数 `RESULTS_DIR` で上書き可） |
 
 ---
 
@@ -78,8 +85,13 @@ source venv/bin/activate
 # 依存パッケージのインストール（Linux 推奨）
 pip install -r requirements_linux.txt
 
-# 環境変数の設定
-echo "OPENAI_API_KEY=your_openai_api_key_here" > .env
+# 環境変数の設定（パスはPC環境に合わせて変更する）
+cat <<EOF > .env
+OPENAI_API_KEY=your_openai_api_key_here
+FIO_SCRIPT_DIR=/home/jiro/fioスクリプト
+RESULTS_DIR=/home/jiro/streamlitfio_test/test_check_run/results
+EXTERNAL_APP_URL=http://100.64.1.47:8503
+EOF
 
 # アプリの起動
 streamlit run main.py
@@ -100,16 +112,19 @@ streamlit run main.py --server.address 0.0.0.0
 ### コマンド処理フロー（main.py）
 1. ユーザー入力を受信
 2. `utils.validate_command_format()` で正規表現によりコマンド形式を検証
-3. 正しい形式なら確認メッセージを表示、不正なら LLM に問い合わせてコマンド候補を生成
+3. 正しい形式なら確認メッセージを表示、不正なら LLM に問い合わせてコマンド候補を生成（**成功基準①**: ツールを知らなくても使える）
 4. 有効なコマンドがある場合、サイドバーに「Screen 実行」ボタンを表示
+5. 各処理で例外が発生した場合、原因を含むエラーメッセージをチャット上に表示（**成功基準④**: エラー内容をユーザーに伝える）
 
 ### Screen 実行（utils.py）
 - `execute_script_with_screen()` が `screen -dmS` コマンドをバックグラウンド実行
 - セッション名は `{FWVer}_{testscriptファイル名}_{Model}_{Environment}` で自動生成
-- 実行結果は `st.session_state` に保存し、`st.rerun()` で再レンダリング
+- 実行結果（成功・失敗・セッション名・接続コマンド）は `st.session_state` に保存し、サイドバーにリアルタイム表示（**成功基準②**: 実施状況の可視化）
+- 実行失敗時は `stderr` の内容をそのままエラーメッセージとして表示（**成功基準④**: エラー内容のフィードバック）
 
 ### テスト結果の読み込み（utils.py）
-- `/home/jiro/base_chatbot/results/` 内の JSON ファイルを読み込む
+- サイドバーの「テスト結果」タブから過去の fio 試験結果を確認できる（**成功基準③**: 過去ログ確認）
+- `RESULTS_DIR`（デフォルト: `/home/jiro/streamlitfio_test/test_check_run/results/`）内の JSON ファイルを新しい順に最大5件表示
 - ファイル名のフォーマット：`YYYYMMDD_HHMMSS_テスト種別_FW{ver}_{model}_{env}.json`
 - fio の JSON 出力形式（`jobs[0]` に `read` / `write` の `iops`, `bw` が入る）
 
@@ -141,11 +156,15 @@ screen -r <セッション名>         # セッションへ接続
 # Ctrl+A → D でセッションから離脱
 ```
 
+### 試験が失敗した場合（成功基準④）
+- サイドバーの「Screen実行」タブに ❌ マークとともに `stderr` のエラー内容が表示される
+- `./logs/application.log` にも詳細なエラーログが記録されているため、管理者への問い合わせ時に参照する
+
 ---
 
 ## 開発上の注意点
 
-- `components.py` の `display_external_app_launch_option()` では `st.sidebar` 内に重複して `## Screen実行` セクションが描画される実装上のバグあり（`st.markdown("## 📺 Screen実行")` と `st.info(...)` が2回連続している）
 - `utils.py` の `adjust_string()` は Windows 向けの文字コード処理だが、本番環境は Linux のため実質使用されない
 - `check_testscript_response()` は定義されているが `main.py` からは直接呼ばれていない（`validate_command_format()` が代わりに使われている）
+- サイドバーの描画は `components.py` の `display_sidebar()` が担当しており、Tab1（Screen実行）・Tab2（テスト結果）の2タブ構成になっている
 - ログは `./logs/application.log` に日次ローテーションで出力される
