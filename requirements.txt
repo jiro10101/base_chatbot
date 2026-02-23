@@ -1,4 +1,5 @@
 # Minimal requirements - only packages actually used in code
+# Last updated: 2025-11-16
 
 # UI Framework
 streamlit>=1.45.0

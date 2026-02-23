@@ -1,11 +1,10 @@
-# 試験実施AIエージェント
+# 試験実施コマンド ジェネレーター
 
-このプロジェクトは、Streamlit、LangChain、OpenAIを使用したシンプルなLinuxコマンド生成チャットボットアプリケーションです。
+このプロジェクトは、Streamlit、LangChain、OpenAIを使用したスクリプト名生成AIチャットボットアプリケーションです。
 
 ## 概要
 
-ユーザーの自然言語による指示を、Linux (Ubuntu 24.04) のbashコマンドに変換するAIアシスタントです。
-特に`fio`コマンドを使用したディスクI/Oベンチマーク測定を安全に実行するための制約が組み込まれています。
+ユーザーが指定したパラメータ（FWVer、Testscript、TestingEnvironment、Model）に基づいて、指定されたフォーマットに従ったスクリプト名を自動生成するAIアシスタントです。パラメータが不足している場合は、複数の組み合わせ例を提示してユーザーをサポートします。
 
 ## セットアップ
 
@@ -28,16 +27,16 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-#### Linux向けの追加要件
+#### Linux向けの推奨要件
 
-プラットフォーム別のrequirementsファイルも利用可能です：
+Linux環境では専用のrequirementsファイルの使用を推奨します：
 
 ```bash
-# Linux
+# Linux向け（推奨）
 pip install -r requirements_linux.txt
 
-# Linux - 完全版（固定バージョン）
-pip install -r requirements_linux_full.txt
+# 汎用版
+pip install -r requirements.txt
 ```
 
 ### 3. 環境変数の設定
@@ -60,31 +59,45 @@ streamlit run main.py
 
 ## 主な機能
 
-- **自然言語からbashコマンドへの変換**: 日本語の指示をLinuxコマンドに変換
-- **fio安全実行制約**: 
-  - 対象デバイス: `/dev/nvme0n1`に限定
-  - 最大実行時間: 10秒以下
-  - 必須パラメータの自動付与
+- **スクリプト名の自動生成**: 指定されたパラメータから標準フォーマットのスクリプト名を生成
+- **パラメータの入力サポート**: 
+  - 必須パラメータ: FWVer、Testscript、TestingEnvironment、Model
+  - パラメータ不足時は複数の組み合わせ例を提示
 - **シンプルなチャットインターフェース**: Streamlitベースの使いやすいUI
-- **会話履歴管理**: トークン数を管理して効率的な会話を維持
+- **会話履歴管理**: トークン数（上限2000）を管理して効率的な会話を維持
 
 ## 使用例
 
+### 全パラメータ指定時
 ```
-ユーザー: SeqWriteを測定して
-AI: fio --name=test --filename=/dev/nvme0n1 --direct=1 --rw=write --runtime=10 --time_based --group_reporting
+ユーザー: FWVer: 1.00, Model: ModelA, Testscript: /home/jiro/fioスクリプト/rand_read_simple.sh, TestingEnvironment: 100.67.161.104
+AI: /home/jiro/fioスクリプト/Testtoolsqript.sh 1.00 /home/jiro/fioスクリプト/rand_read_simple.sh ModelA 100.67.161.104
+```
 
-ユーザー: ディスクの空き容量を見せて
-AI: df -h
+### パラメータ不足時
+```
+ユーザー: FWVer: 1.20, Model: ModelB
+AI: 以下を指定してください。
+1. Testscript [試験スクリプト名]: 例 /home/jiro/fioスクリプト/rand_read_simple.sh, /home/jiro/fioスクリプト/rand_write_simple.sh
+2. TestingEnvironment [試験環境]: 例 100.67.161.104, 192.168.20.20
+
+[複数の組み合わせ例を3つ程度提示]
 ```
 
 ## 社内公開設定
 
-デフォルトで社内ネットワークからアクセス可能な設定になっています：
+アプリケーションはデフォルトで`localhost:8501`で起動します。
+社内ネットワークからアクセスできるようにするには：
 
-- **アドレス**: `0.0.0.0` (すべてのネットワークインターフェースでリッスン)
-- **ポート**: `8501`
-- **アクセスURL**: `http://<サーバーのIPアドレス>:8501`
+```bash
+# すべてのネットワークインターフェースでリッスン
+streamlit run main.py --server.address 0.0.0.0
+
+# カスタムポートを指定
+streamlit run main.py --server.address 0.0.0.0 --server.port 8502
+```
+
+**アクセスURL**: `http://<サーバーのIPアドレス>:8501`
 
 IPアドレスの確認：
 ```bash
@@ -98,45 +111,49 @@ hostname -I
 ### プロジェクト構成
 
 ```
-kadai2/
-├── main.py              # メインアプリケーション
-├── initialize.py        # 初期化処理（LLM、Chain作成）
-├── utils.py            # ユーティリティ関数
-├── components.py       # UIコンポーネント
-├── constants.py        # 定数定義（プロンプト、設定値）
-├── requirements.txt    # Python依存パッケージ
-├── .streamlit/
-│   └── config.toml    # Streamlit設定
-├── data/              # データディレクトリ
-├── logs/              # ログファイル
-└── images/            # アイコン画像
+base_chatbot/
+├── main.py                  # メインアプリケーション
+├── initialize.py            # 初期化処理（LLM、Chain作成）
+├── utils.py                 # ユーティリティ関数
+├── components.py            # UIコンポーネント
+├── constants.py             # 定数定義（プロンプト、設定値）
+├── requirements.txt         # Python依存パッケージ（汎用）
+├── requirements_linux.txt   # Linux向け依存パッケージ
+├── .env                     # 環境変数（APIキー等）
+├── .gitignore              # Git除外設定
+├── logs/                    # ログファイル
+└── images/                  # アイコン画像
 ```
 
 ### 主要コンポーネント
 
 - **LLMモデル**: OpenAI GPT-4o-mini
-- **フレームワーク**: LangChain (Classic) 1.0+
+- **Temperature**: 0.5（適度な創造性と一貫性のバランス）
+- **フレームワーク**: LangChain 1.0+
 - **UI**: Streamlit 1.45+
-- **会話管理**: LangChainのメッセージ履歴とトークンカウント
+- **会話管理**: LangChainのメッセージ履歴とトークンカウント（上限2000トークン）
+- **エンコーディング**: cl100k_base
 
-### 最近の変更（RAG機能削除）
+### 機能の特徴
 
-- ✅ RAG（検索拡張生成）機能を削除してシンプル化
-- ✅ ベクトルDB（ChromaDB）関連の依存関係を削除
-- ✅ ドキュメント処理（PDF、DOCX）機能を削除
-- ✅ 不要なパッケージを削除（pandas、numpy、fastapi等）
-- ✅ `langchain-classic`を使用して最新バージョンに対応
-- ✅ 関数名をリファクタリング（`initialize_agent_executor` → `initialize_llm_chain`）
-- ✅ プロンプトテンプレートの変数エスケープ問題を修正
+- ✅ スクリプト名生成に特化したAIアシスタント
+- ✅ パラメータベースの自動命名規則適用
+- ✅ シンプルな構成（RAG機能なし）
+- ✅ 最新のLangChain 1.0+対応
+- ✅ トークン管理による効率的な会話履歴（上限2000トークン）
 
-### セキュリティと制約
+### 出力フォーマット
 
-アプリケーションには以下の安全性制約が組み込まれています：
+生成されるスクリプト名のフォーマット：
+```
+/home/jiro/fioスクリプト/Testtoolsqript.sh [FWVer] [Testscript] [Model] [TestingEnvironment]
+```
 
-1. **デバイス制限**: fioコマンドは`/dev/nvme0n1`のみに実行
-2. **時間制限**: fioの実行時間は最大10秒
-3. **危険なコマンドの拒否**: フォーマット等の危険な操作は拒否
-4. **単一コマンド**: 複雑なスクリプトではなく単一のbashコマンドのみ生成
+**パラメータ例:**
+- **FWVer**: `1.00`, `1.20`, `1.04`
+- **Testscript**: `/home/jiro/fioスクリプト/rand_read_simple.sh`, `/home/jiro/fioスクリプト/rand_write_simple.sh`, `/home/jiro/fioスクリプト/seq_read_simple.sh`, `/home/jiro/fioスクリプト/seq_write_simple.sh`
+- **TestingEnvironment**: `100.67.161.104`, `192.168.20.20`
+- **Model**: `ModelA`, `ModelB`, `ModelC`
 
 ## トラブルシューティング
 
@@ -158,10 +175,16 @@ pkill -f "streamlit run"
 streamlit run main.py --server.port 8502
 ```
 
-### LangChainバージョン問題
+### LangChainバージョンについて
 
-`langchain 1.0`以降では多くのモジュールが再構成されています。
-このプロジェクトは`langchain-classic`を使用して互換性を確保しています。
+このプロジェクトは`langchain 1.0`以降に対応しています。
+必要なコンポーネントは`langchain-core`と`langchain-openai`を使用しています。
+
+## 必要な環境
+
+- **Python**: 3.8以上（推奨: 3.12）
+- **OS**: Linux (Ubuntu 24.04での動作確認済み)
+- **OpenAI APIキー**: 必須
 
 ## ライセンス
 

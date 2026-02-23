@@ -1,10 +1,14 @@
 """
-このファイルは、Webアプリのメイン処理が記述されたファイルです。
+Streamlit アプリのエントリーポイント。
+Streamlit はページ操作のたびにこのファイルを先頭から再実行するため、
+初期化処理は session_state の有無で制御している。
+
+処理フロー:
+  1. 初期化（LLM・ロガー・session_state）
+  2. 画面の初期描画（タイトル・AIメッセージ・会話ログ）
+  3. チャット送信時: コマンド検証 → LLM応答 → サイドバー更新
 """
 
-############################################################
-# ライブラリの読み込み
-############################################################
 from dotenv import load_dotenv
 import logging
 import streamlit as st
@@ -13,22 +17,14 @@ from initialize import initialize
 import components as cn
 import constants as ct
 
+st.set_page_config(page_title=ct.APP_NAME)
 
-############################################################
-# 設定関連
-############################################################
-st.set_page_config(
-    page_title=ct.APP_NAME
-)
-
+# .env から OPENAI_API_KEY などの環境変数を読み込む
 load_dotenv()
 
 logger = logging.getLogger(ct.LOGGER_NAME)
 
-
-############################################################
-# 初期化処理
-############################################################
+# --- 初期化処理 ---
 try:
     initialize()
 except Exception as e:
@@ -36,38 +32,21 @@ except Exception as e:
     st.error(utils.build_error_message(ct.INITIALIZE_ERROR_MESSAGE), icon=ct.ERROR_ICON)
     st.stop()
 
-# アプリ起動時のログ出力
-if not "initialized" in st.session_state:
+# アプリ起動ログは初回のみ出力（再描画時はスキップ）
+if "initialized" not in st.session_state:
     st.session_state.initialized = True
     logger.info(ct.APP_BOOT_MESSAGE)
 
-
-############################################################
-# 初期表示
-############################################################
-# タイトル表示
+# --- 初期描画 ---
 cn.display_app_title()
-
-# AIメッセージの初期表示
 cn.display_initial_ai_message()
+st.markdown(ct.STYLE, unsafe_allow_html=True)
 
-
-############################################################
-# スタイリング処理
-############################################################
-# 画面装飾を行う「CSS」を記述
-st.markdown(ct.STYLE, unsafe_allow_html=True) #保留
-
-
-############################################################
-# チャット入力の受け付け
-############################################################
+# --- チャット入力 ---
+# chat_input は送信されたときのみ文字列、それ以外は None を返す
 chat_message = st.chat_input(ct.CHAT_INPUT_HELPER_TEXT)
 
-
-############################################################
-# 会話ログの表示
-############################################################
+# --- 会話ログ表示 ---
 try:
     cn.display_conversation_log(chat_message)
 except Exception as e:
@@ -75,67 +54,60 @@ except Exception as e:
     st.error(utils.build_error_message(ct.CONVERSATION_LOG_ERROR_MESSAGE), icon=ct.ERROR_ICON)
     st.stop()
 
-
-############################################################
-# チャット送信時の処理
-############################################################
+# --- チャット送信時の処理 ---
 if chat_message:
-    # ==========================================
-    # 会話履歴の上限を超えた場合、受け付けない
-    # ==========================================
-    # ユーザーメッセージのトークン数を取得
+    # 入力トークン数チェック（上限超過なら受け付けない）
     input_tokens = len(st.session_state.enc.encode(chat_message))
-    # トークン数が、受付上限を超えている場合にエラーメッセージを表示
     if input_tokens > ct.MAX_ALLOWED_TOKENS:
         with st.chat_message("assistant", avatar=ct.AI_ICON_FILE_PATH):
             st.error(ct.INPUT_TEXT_LIMIT_ERROR_MESSAGE)
             st.stop()
-    # トークン数が受付上限を超えていない場合、会話ログ全体のトークン数に加算
     st.session_state.total_tokens += input_tokens
 
-    # ==========================================
-    # 1. ユーザーメッセージの表示
-    # ==========================================
     logger.info({"message": chat_message})
 
-    res_box = st.empty()
     with st.chat_message("user", avatar=ct.USER_ICON_FILE_PATH):
         st.markdown(chat_message)
-    
-    # ==========================================
-    # 2. LLMからの回答取得 or 問い合わせ処理
-    # ==========================================
-    res_box = st.empty()
+
     try:
         with st.spinner(ct.SPINNER_TEXT):
-            result = utils.execute_agent_or_chain(chat_message)
+            # ユーザー入力が正規コマンドの場合はそのまま確認メッセージを生成（LLM不使用）
+            # 正規コマンドでない場合はLLMにコマンド候補の生成を依頼
+            validation_result = utils.validate_command_format(chat_message)
+            if validation_result["valid"]:
+                result = f"✓ コマンドの形式が正しいです。\n\nコマンド: `{validation_result['command']}`\n\n「Screen実行」ボタンで実行できます。"
+                st.session_state.current_command = validation_result["command"]
+                st.session_state.exec_result = None  # コマンドが入力されるたびに実行結果をリセット（再試験可能）
+            else:
+                result = utils.execute_agent_or_chain(chat_message)
     except Exception as e:
         logger.error(f"{ct.MAIN_PROCESS_ERROR_MESSAGE}\n{e}")
         st.error(utils.build_error_message(ct.MAIN_PROCESS_ERROR_MESSAGE), icon=ct.ERROR_ICON)
         st.stop()
-    
-    # ==========================================
-    # 3. 古い会話履歴を削除
-    # ==========================================
+
     utils.delete_old_conversation_log(result)
 
-    # ==========================================
-    # 4. LLMからの回答表示
-    # ==========================================
     with st.chat_message("assistant", avatar=ct.AI_ICON_FILE_PATH):
         try:
             cn.display_llm_response(result)
+
+            # LLM応答にもコマンドが含まれる場合（LLMがコマンドを生成した場合）も current_command を更新
+            validation_result = utils.validate_command_format(result)
+            if validation_result["valid"]:
+                st.session_state.current_command = validation_result["command"]
+                st.session_state.exec_result = None  # コマンドが生成されるたびに実行結果をリセット（再試験可能）
 
             logger.info({"message": result})
         except Exception as e:
             logger.error(f"{ct.DISP_ANSWER_ERROR_MESSAGE}\n{e}")
             st.error(utils.build_error_message(ct.DISP_ANSWER_ERROR_MESSAGE), icon=ct.ERROR_ICON)
             st.stop()
-    
-    # ==========================================
-    # 5. 会話ログへの追加
-    # ==========================================
+
+    # 表示用ログと LangChain 用履歴は別系統で管理している
+    # messages: 画面描画用（role/content の辞書）
+    # chat_history: LangChain に渡す用（execute_agent_or_chain 内で更新済み）
     st.session_state.messages.append({"role": "user", "content": chat_message})
     st.session_state.messages.append({"role": "assistant", "content": result})
 
-
+# --- サイドバー表示（再描画のたびに最新 session_state で描画） ---
+cn.display_sidebar()
