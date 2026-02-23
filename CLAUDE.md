@@ -38,6 +38,10 @@ Streamlit + LangChain + OpenAI を使用した、fio 試験スクリプト実行
 | `.env` | 環境変数（`OPENAI_API_KEY` を記載。Git 管理外） |
 | `images/` | UI アイコン画像 |
 | `logs/` | アプリログ（日次ローテーション） |
+| `Makefile` | テスト一括実行コマンド |
+| `tests/conftest.py` | pytest 共通フィクスチャ（session_state・LLM・エンコーダーのモック） |
+| `tests/test_utils.py` | utils.py のユニットテスト（ブラウザ不要） |
+| `tests/test_app.py` | Streamlit UI テスト（ブラウザ不要） |
 
 ---
 
@@ -132,6 +136,56 @@ streamlit run main.py --server.address 0.0.0.0
 - `st.session_state.total_tokens` で累計トークン数を管理
 - 上限（2000）を超えた場合、`delete_old_conversation_log()` が古い会話から順に削除
 - `st.session_state.chat_history`（LangChain の `HumanMessage` / `AIMessage`）と `st.session_state.messages`（表示用辞書リスト）の2系統を並行管理している点に注意
+
+---
+
+## テスト
+
+### テスト構成
+
+ブラウザを起動せずにアプリのロジックと UI を自動検証できる。外部依存（OpenAI・subprocess・Streamlit session_state）はすべてモック化している。
+
+| ファイル | 対象 | テスト数 |
+|---|---|---|
+| `tests/test_utils.py` | `utils.py` のロジック全般 | 17ケース |
+| `tests/test_app.py` | Streamlit UI の起動・チャット送信動作・state管理・ボタン表示条件 | 10ケース |
+
+### テスト実行コマンド
+
+```bash
+# 初回のみ: テスト用パッケージをインストール
+make install-test
+
+# ユニットテストのみ（高速・推奨）
+make test-unit
+
+# UI テストのみ
+make test-ui
+
+# 全テスト実行
+make test
+
+# カバレッジ付き（htmlcov/index.html にレポート生成）
+make test-cov
+```
+
+### テスト対象の関数と確認内容
+
+| テストクラス | 対象 | 主な確認内容 |
+|---|---|---|
+| `TestValidateCommandFormat` | `validate_command_format()` | 正規コマンドの判定・パラメータ抽出・不正コマンドの拒否 |
+| `TestGetLatestTestResults` | `get_latest_test_results()` | JSON 読み込み・降順ソート・壊れたファイルのスキップ |
+| `TestExecuteScriptWithScreen` | `execute_script_with_screen()` | screen 実行の成功・失敗・セッション名生成・例外処理 |
+| `TestExecuteAgentOrChain` | `execute_agent_or_chain()` | LLM Chain 呼び出し・chat_history の更新 |
+| `TestDeleteOldConversationLog` | `delete_old_conversation_log()` | トークン上限超過時の古い履歴削除 |
+| `TestCommandStateManagement` | `main.py` コマンド検証ロジック | コマンド入力のたびに exec_result がリセットされる（同一・別コマンド両方） |
+| `TestScreenButtonVisibility` | `components.py` サイドバー描画 | 未実行・成功後・失敗後それぞれのボタン表示・非表示 |
+
+### テスト追加の方針
+
+- `utils.py` に関数を追加したら `tests/test_utils.py` に対応するテストクラスを追加する
+- 外部 API・ファイルシステム・subprocess は必ず `unittest.mock.patch` でモックする
+- `conftest.py` のフィクスチャを共通化して、テスト間の重複を減らす
 
 ---
 

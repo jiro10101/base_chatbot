@@ -88,11 +88,18 @@ def display_sidebar():
                 st.markdown("**実行コマンド:**")
                 st.code(st.session_state.current_command, language="bash")
 
-                if st.button("▶️ Screen実行", key="screen_exec_btn", type="primary", use_container_width=True):
-                    with st.spinner("Screen実行中..."):
-                        exec_result = utils.execute_script_with_screen(st.session_state.current_command)
-                        st.session_state.exec_result = exec_result
-                    st.rerun()
+                # exec_result が未実行（None）か失敗の場合のみボタンを表示
+                exec_not_done = st.session_state.exec_result is None
+                exec_failed = (
+                    st.session_state.exec_result is not None
+                    and not st.session_state.exec_result.get("success", False)
+                )
+                if exec_not_done or exec_failed:
+                    if st.button("▶️ Screen実行", key="screen_exec_btn", type="primary", use_container_width=True):
+                        with st.spinner("Screen実行中..."):
+                            exec_result = utils.execute_script_with_screen(st.session_state.current_command)
+                            st.session_state.exec_result = exec_result
+                        st.rerun()
 
                 # 実行結果の表示
                 if st.session_state.exec_result is not None:

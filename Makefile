@@ -17,16 +17,16 @@ test: test-unit test-ui
 
 test-unit:
 	@echo "=== ユニットテスト (utils.py) ==="
-	pytest tests/test_utils.py -v --tb=short
+	python -m pytest tests/test_utils.py -v --tb=short
 
 test-ui:
 	@echo "=== UI テスト (Streamlit AppTest) ==="
-	pytest tests/test_app.py -v --tb=short
+	python -m pytest tests/test_app.py -v --tb=short
 
 # カバレッジレポートも出力（htmlcov/ に HTML 生成）
 test-cov:
 	@echo "=== カバレッジ付きテスト ==="
-	pytest tests/ -v --tb=short --cov=. --cov-report=term-missing --cov-report=html
+	python -m pytest tests/ -v --tb=short --cov=. --cov-report=term-missing --cov-report=html
 	@echo "📊 HTML レポート: htmlcov/index.html"
 
 # ── 環境セットアップ ────────────────────────────────────

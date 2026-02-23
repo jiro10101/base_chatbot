@@ -76,9 +76,8 @@ if chat_message:
             validation_result = utils.validate_command_format(chat_message)
             if validation_result["valid"]:
                 result = f"✓ コマンドの形式が正しいです。\n\nコマンド: `{validation_result['command']}`\n\n「Screen実行」ボタンで実行できます。"
-                if st.session_state.current_command != validation_result["command"]:
-                    st.session_state.current_command = validation_result["command"]
-                    st.session_state.exec_result = None  # コマンドが変わったら実行結果をリセット
+                st.session_state.current_command = validation_result["command"]
+                st.session_state.exec_result = None  # コマンドが入力されるたびに実行結果をリセット（再試験可能）
             else:
                 result = utils.execute_agent_or_chain(chat_message)
     except Exception as e:
@@ -95,9 +94,8 @@ if chat_message:
             # LLM応答にもコマンドが含まれる場合（LLMがコマンドを生成した場合）も current_command を更新
             validation_result = utils.validate_command_format(result)
             if validation_result["valid"]:
-                if st.session_state.current_command != validation_result["command"]:
-                    st.session_state.current_command = validation_result["command"]
-                    st.session_state.exec_result = None
+                st.session_state.current_command = validation_result["command"]
+                st.session_state.exec_result = None  # コマンドが生成されるたびに実行結果をリセット（再試験可能）
 
             logger.info({"message": result})
         except Exception as e:
